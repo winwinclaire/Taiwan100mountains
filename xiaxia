@@ -1,0 +1,239 @@
+
+台灣百名山.html
+登入
+第
+1
+頁
+(
+共
+1
+頁)
+100%
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台灣百名山 (Taiwan Marvelous 100) 地圖</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    
+    <style>
+        body { margin: 0; padding: 0; font-family: "Microsoft JhengHei", Arial, sans-serif; }
+        #map { height: 100vh; width: 100%; }
+        
+        /* 自定義圖例樣式 */
+        .info {
+            padding: 6px 8px;
+            font: 14px/16px Arial, Helvetica, sans-serif;
+            background: white;
+            background: rgba(255,255,255,0.9);
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            border-radius: 5px;
+        }
+        .legend {
+            line-height: 18px;
+            color: #555;
+        }
+        .legend i {
+            width: 18px;
+            height: 18px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.7;
+            border-radius: 50%;
+        }
+        
+        /* 標籤樣式 */
+        .mountain-label {
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid #333;
+            border-radius: 3px;
+            padding: 0 3px;
+            font-size: 11px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <script>
+        // 初始化地圖，中心點設在台灣中部
+        var map = L.map('map').setView([23.7, 120.95], 8);
+
+        // 使用 OpenTopoMap 圖層 (適合看山的地形)
+        L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            maxZoom: 17,
+            attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+        }).addTo(map);
+
+        // 定義不同類型的顏色
+        function getColor(type) {
+            return type === '百岳' ? '#FF0000' :       // 紅色
+                   type === '小百岳' ? '#008000' :     // 綠色
+                   type === '中級山' ? '#0000FF' :     // 藍色
+                   type === '高山' ? '#800080' :       // 紫色 (部分非百岳的高山)
+                   '#808080';                          // 灰色 (郊山/其他)
+        }
+
+        // 台灣百名山數據 (林宗聖版)
+        // 註：座標為概略位置，供視覺化參考
+        var mountains = [
+            {id: "001", name: "磺嘴山", h: 912, type: "中級山", lat: 25.168, lng: 121.574},
+            {id: "002", name: "大屯山", h: 1092, type: "小百岳", lat: 25.176, lng: 121.521},
+            {id: "003", name: "七星山", h: 1120, type: "小百岳", lat: 25.170, lng: 121.545},
+            {id: "004", name: "觀音山", h: 616, type: "小百岳", lat: 25.137, lng: 121.423},
+            {id: "005", name: "基隆山", h: 587, type: "小百岳", lat: 25.119, lng: 121.846},
+            {id: "006", name: "獅仔頭山", h: 858, type: "小百岳", lat: 24.908, lng: 121.503},
+            {id: "007", name: "北插天山", h: 1727, type: "中級山", lat: 24.792, lng: 121.448},
+            {id: "008", name: "阿玉山", h: 1420, type: "中級山", lat: 24.789, lng: 121.603},
+            {id: "009", name: "鳥嘴山", h: 1749, type: "中級山", lat: 24.577, lng: 121.282},
+            {id: "010", name: "塔曼山", h: 2130, type: "中級山", lat: 24.707, lng: 121.436},
+            {id: "011", name: "李崠山", h: 1914, type: "小百岳", lat: 24.646, lng: 121.300},
+            {id: "012", name: "巴博庫魯山", h: 2101, type: "中級山", lat: 24.673, lng: 121.470},
+            {id: "013", name: "雪白山", h: 2444, type: "中級山", lat: 24.611, lng: 121.373},
+            {id: "014", name: "霞喀羅大山", h: 2234, type: "中級山", lat: 24.567, lng: 121.233},
+            {id: "015", name: "仙山", h: 967, type: "小百岳", lat: 24.545, lng: 120.948},
+            {id: "016", name: "加里山", h: 2220, type: "小百岳", lat: 24.516, lng: 121.033},
+            {id: "017", name: "鹿場大山", h: 2360, type: "中級山", lat: 24.498, lng: 121.050},
+            {id: "018", name: "虎山", h: 1492, type: "中級山", lat: 24.467, lng: 120.983},
+            {id: "019", name: "大霸尖山", h: 3492, type: "百岳", lat: 24.464, lng: 121.258},
+            {id: "020", name: "東洗水山", h: 2248, type: "中級山", lat: 24.408, lng: 120.983},
+            {id: "021", name: "桃山", h: 3325, type: "百岳", lat: 24.417, lng: 121.300},
+            {id: "022", name: "品田山", h: 3529, type: "百岳", lat: 24.428, lng: 121.267},
+            {id: "023", name: "穆特勒布山", h: 3626, type: "高山", lat: 24.417, lng: 121.250},
+            {id: "024", name: "雪山", h: 3886, type: "百岳", lat: 24.383, lng: 121.233},
+            {id: "025", name: "火炎山", h: 602, type: "小百岳", lat: 24.363, lng: 120.730},
+            {id: "026", name: "馬那邦山", h: 1407, type: "小百岳", lat: 24.367, lng: 120.917},
+            {id: "027", name: "南湖東峰", h: 3632, type: "百岳", lat: 24.364, lng: 121.441},
+            {id: "028", name: "南湖大山", h: 3742, type: "百岳", lat: 24.358, lng: 121.433},
+            {id: "029", name: "中央尖山", h: 3705, type: "百岳", lat: 24.317, lng: 121.400},
+            {id: "030", name: "稍來山", h: 2307, type: "小百岳", lat: 24.233, lng: 120.967},
+            {id: "031", name: "白姑大山", h: 3341, type: "百岳", lat: 24.204, lng: 121.107},
+            {id: "032", name: "東卯山", h: 1690, type: "中級山", lat: 24.183, lng: 120.933},
+            {id: "033", name: "合歡北峰", h: 3422, type: "百岳", lat: 24.181, lng: 121.283},
+            {id: "034", name: "八仙山", h: 2366, type: "中級山", lat: 24.167, lng: 121.017},
+            {id: "035", name: "合歡山", h: 3417, type: "百岳", lat: 24.142, lng: 121.272},
+            {id: "036", name: "守城大山", h: 2420, type: "中級山", lat: 24.067, lng: 121.083},
+            {id: "037", name: "能高山", h: 3262, type: "百岳", lat: 24.033, lng: 121.283},
+            {id: "038", name: "馬海濮富士山", h: 2617, type: "中級山", lat: 24.017, lng: 121.183},
+            {id: "039", name: "能高南峰", h: 3349, type: "百岳", lat: 24.000, lng: 121.283},
+            {id: "040", name: "九份二山", h: 1174, type: "小百岳", lat: 23.950, lng: 120.833},
+            {id: "041", name: "干卓萬山", h: 3284, type: "百岳", lat: 23.900, lng: 121.133},
+            {id: "042", name: "安東軍山", h: 3068, type: "百岳", lat: 23.867, lng: 121.267},
+            {id: "043", name: "集集大山", h: 1392, type: "小百岳", lat: 23.850, lng: 120.817},
+            {id: "044", name: "水社大山", h: 2059, type: "中級山", lat: 23.842, lng: 120.950},
+            {id: "045", name: "治茆山", h: 2909, type: "中級山", lat: 23.800, lng: 120.983},
+            {id: "046", name: "鳳凰山", h: 1698, type: "小百岳", lat: 23.700, lng: 120.817},
+            {id: "047", name: "東郡大山", h: 3619, type: "百岳", lat: 23.683, lng: 121.050},
+            {id: "048", name: "石壁山", h: 1752, type: "小百岳", lat: 23.608, lng: 120.717},
+            {id: "049", name: "丹大山", h: 3325, type: "百岳", lat: 23.633, lng: 121.183},
+            {id: "050", name: "雲嘉大尖山", h: 1304, type: "小百岳", lat: 23.583, lng: 120.617},
+            {id: "051", name: "郡大山", h: 3265, type: "百岳", lat: 23.583, lng: 120.950},
+            {id: "052", name: "大塔山", h: 2663, type: "小百岳", lat: 23.533, lng: 120.800},
+            {id: "053", name: "馬利加南山", h: 3546, type: "百岳", lat: 23.517, lng: 121.117},
+            {id: "054", name: "馬博拉斯山", h: 3785, type: "百岳", lat: 23.517, lng: 121.067},
+            {id: "055", name: "秀姑巒山", h: 3805, type: "百岳", lat: 23.500, lng: 121.050},
+            {id: "056", name: "玉山北峰", h: 3858, type: "百岳", lat: 23.485, lng: 120.953},
+            {id: "057", name: "大水窟山", h: 3642, type: "百岳", lat: 23.467, lng: 121.050},
+            {id: "058", name: "玉山", h: 3952, type: "百岳", lat: 23.470, lng: 120.957},
+            {id: "059", name: "玉穗山", h: 1578, type: "中級山", lat: 23.233, lng: 120.817},
+            {id: "060", name: "大凍山", h: 1241, type: "小百岳", lat: 23.317, lng: 120.500},
+            {id: "061", name: "向陽山", h: 3602, type: "百岳", lat: 23.283, lng: 120.983},
+            {id: "062", name: "關山", h: 3666, type: "百岳", lat: 23.267, lng: 120.917},
+            {id: "063", name: "石山", h: 2818, type: "中級山", lat: 23.117, lng: 120.783},
+            {id: "064", name: "卑南主山", h: 3295, type: "百岳", lat: 23.083, lng: 120.867},
+            {id: "065", name: "尾寮山", h: 1427, type: "小百岳", lat: 22.867, lng: 120.633},
+            {id: "066", name: "大母母山", h: 2424, type: "中級山", lat: 22.750, lng: 120.750},
+            {id: "067", name: "知本主山", h: 2230, type: "中級山", lat: 22.717, lng: 120.933},
+            {id: "068", name: "井步山", h: 2066, type: "中級山", lat: 22.733, lng: 120.733},
+            {id: "069", name: "霧頭山", h: 2736, type: "中級山", lat: 22.683, lng: 120.783},
+            {id: "070", name: "壽山", h: 356, type: "小百岳", lat: 22.650, lng: 120.267},
+            {id: "071", name: "北大武山", h: 3092, type: "百岳", lat: 22.628, lng: 120.760},
+            {id: "072", name: "南大武山", h: 2841, type: "中級山", lat: 22.567, lng: 120.750},
+            {id: "073", name: "里龍山", h: 1062, type: "小百岳", lat: 22.183, lng: 120.717},
+            {id: "074", name: "烘爐地山", h: 1166, type: "中級山", lat: 24.850, lng: 121.733},
+            {id: "075", name: "三星山", h: 2352, type: "小百岳", lat: 24.517, lng: 121.567},
+            {id: "076", name: "飯包山", h: 1857, type: "中級山", lat: 24.500, lng: 121.683},
+            {id: "077", name: "清水大山", h: 2408, type: "中級山", lat: 24.233, lng: 121.617},
+            {id: "078", name: "三角錐山", h: 2607, type: "中級山", lat: 24.200, lng: 121.567},
+            {id: "079", name: "塔山", h: 2449, type: "中級山", lat: 24.150, lng: 121.533},
+            {id: "080", name: "佐久間山", h: 2809, type: "中級山", lat: 24.117, lng: 121.517},
+            {id: "081", name: "奇萊北峰", h: 3607, type: "百岳", lat: 24.114, lng: 121.333},
+            {id: "082", name: "太魯閣大山", h: 3283, type: "百岳", lat: 24.083, lng: 121.433},
+            {id: "083", name: "鯉魚山", h: 601, type: "小百岳", lat: 23.933, lng: 121.517},
+            {id: "084", name: "木瓜山", h: 2427, type: "中級山", lat: 23.900, lng: 121.467},
+            {id: "085", name: "針山", h: 2340, type: "中級山", lat: 23.867, lng: 121.367},
+            {id: "086", name: "南二子山", h: 2454, type: "中級山", lat: 23.833, lng: 121.417},
+            {id: "087", name: "王武塔山", h: 2022, type: "中級山", lat: 23.750, lng: 121.383},
+            {id: "088", name: "阿屘那來山", h: 3061, type: "高山", lat: 23.717, lng: 121.300},
+            {id: "089", name: "八里灣山", h: 924, type: "小百岳", lat: 23.533, lng: 121.517},
+            {id: "090", name: "馬西山", h: 3443, type: "百岳", lat: 23.417, lng: 121.183},
+            {id: "091", name: "玉里山", h: 2157, type: "中級山", lat: 23.367, lng: 121.283},
+            {id: "092", name: "新康山", h: 3331, type: "百岳", lat: 23.333, lng: 121.133},
+            {id: "093", name: "成廣澳山", h: 1598, type: "中級山", lat: 23.167, lng: 121.350},
+            {id: "094", name: "新港山", h: 1682, type: "中級山", lat: 23.133, lng: 121.317},
+            {id: "095", name: "美奈田主山", h: 2931, type: "中級山", lat: 22.950, lng: 120.933},
+            {id: "096", name: "都蘭山", h: 1190, type: "小百岳", lat: 22.883, lng: 121.183},
+            {id: "097", name: "火燒山", h: 280, type: "郊山", lat: 22.667, lng: 121.483},
+            {id: "098", name: "太麻里山", h: 1340, type: "小百岳", lat: 22.633, lng: 120.967},
+            {id: "099", name: "紅頭山", h: 552, type: "小百岳", lat: 22.050, lng: 121.550},
+            {id: "100", name: "太武山", h: 253, type: "小百岳", lat: 24.461, lng: 118.426}
+        ];
+
+        // 將數據添加到地圖
+        mountains.forEach(function(m) {
+            // 根據類型選擇顏色
+            var color = getColor(m.type);
+
+            // 創建圓形標記
+            var marker = L.circleMarker([m.lat, m.lng], {
+                radius: 6,
+                fillColor: color,
+                color: "#fff",
+                weight: 1,
+                opacity: 1,
+                fillOpacity: 0.8
+            }).addTo(map);
+
+            // 綁定 Popup 資訊視窗
+            marker.bindPopup(`
+                <b>${m.id} ${m.name}</b><br>
+                高度: ${m.h}m<br>
+                類型: ${m.type}
+            `);
+
+            // 綁定 Tooltip (滑鼠懸停顯示)
+            marker.bindTooltip(`${m.id} ${m.name}`, {
+                permanent: false,
+                direction: 'top',
+                offset: [0, -5]
+            });
+        });
+
+        // 建立圖例
+        var legend = L.control({position: 'bottomright'});
+        legend.onAdd = function (map) {
+            var div = L.DomUtil.create('div', 'info legend');
+            var categories = ['百岳', '小百岳', '中級山', '高山', '郊山'];
+            var labels = [];
+
+            div.innerHTML = '<strong>圖例</strong><br>';
+            for (var i = 0; i < categories.length; i++) {
+                div.innerHTML +=
+                    '<i style="background:' + getColor(categories[i]) + '"></i> ' +
+                    categories[i] + '<br>';
+            }
+            return div;
+        };
+        legend.addTo(map);
+
+    </script>
+</body>
+</html>
+目前顯示的是「台灣百名山.html」。
