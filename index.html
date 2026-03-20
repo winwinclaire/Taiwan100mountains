@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台灣百名山 Taiwan 100 Mountains</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg-primary: #1a1f2e;
+            --bg-secondary: #242938;
+            --bg-tertiary: #2d3344;
+            --text-primary: #f0f4f8;
+            --text-secondary: #94a3b8;
+            --accent: #22c55e;
+            --accent-hover: #16a34a;
+            --border: #3d4555;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 360px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            transition: transform 0.3s ease;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .sidebar-header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        
+        .sidebar-header p {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+        
+        /* Search */
+        .search-box {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        
+        .search-input:focus {
+            border-color: var(--accent);
+        }
+        
+        .search-input::placeholder {
+            color: var(--text-secondary);
+        }
+        
+        /* Filters */
+        .filters {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .filters-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+        
+        .filter-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .filter-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            color: var(--text-primary);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .filter-btn:hover {
+            background: var(--bg-primary);
+        }
+        
+        .filter-btn.active {
+            border-color: var(--accent);
+            background: rgba(34, 197, 94, 0.1);
+        }
+        
+        .filter-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        
+        .filter-count {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+        }
+        
+        /* Sort */
+        .sort-box {
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .sort-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        
+        .sort-select {
+            flex: 1;
+            padding: 6px 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 0.8rem;
+            cursor: pointer;
+            outline: none;
+        }
+        
+        /* Mountain List */
+        .mountain-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+        
+        .mountain-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-left: 3px solid transparent;
+        }
+        
+        .mountain-item:hover {
+            background: var(--bg-tertiary);
+        }
+        
+        .mountain-item.selected {
+            background: var(--bg-tertiary);
+            border-left-color: var(--accent);
+        }
+        
+        .mountain-marker {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        
+        .mountain-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .mountain-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .mountain-meta {
+            display: flex;
+            gap: 12px;
+            margin-top: 2px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        
+        .mountain-elevation {
+            font-weight: 600;
+            color: var(--accent);
+            font-size: 0.85rem;
+        }
+        
+        /* Stats */
+        .stats {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-tertiary);
+        }
+        
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+        }
+        
+        .stats-label {
+            color: var(--text-secondary);
+        }
+        
+        .stats-value {
+            font-weight: 600;
+        }
+        
+        /* Map Container */
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+        
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+        
+        /* Legend */
+        .map-legend {
+            position: absolute;
+            bottom: 30px;
+            right: 10px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 16px;
+            z-index: 1000;
+            font-size: 0.8rem;
+        }
+        
+        .legend-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+            color: var(--text-secondary);
+        }
+        
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        /* Mobile Toggle */
+        .mobile-toggle {
+            display: none;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1001;
+            width: 44px;
+            height: 44px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                z-index: 1002;
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            
+            .mobile-toggle {
+                display: flex;
+            }
+            
+            .sidebar-open .mobile-toggle {
+                left: 370px;
+            }
+        }
+        
+        /* Custom Leaflet Popup */
+        .leaflet-popup-content-wrapper {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border-radius: 8px;
+        }
+        
+        .leaflet-popup-content {
+            margin: 12px 16px;
+        }
+        
+        .leaflet-popup-tip {
+            background: var(--bg-secondary);
+        }
+        
+        .popup-title {
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 8px;
+        }
+        
+        .popup-info {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        
+        .popup-elevation {
+            color: var(--accent);
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1>台灣百名山</h1>
+                <p>Taiwan 100 Mountains</p>
+            </div>
+            
+            <div class="search-box">
+                <input type="text" class="search-input" id="searchInput" placeholder="搜尋山名或編號...">
+            </div>
+            
+            <div class="filters">
+                <div class="filters-title">篩選類型</div>
+                <div class="filter-buttons" id="filterButtons"></div>
+            </div>
+            
+            <div class="sort-box">
+                <span class="sort-label">排序：</span>
+                <select class="sort-select" id="sortSelect">
+                    <option value="id">編號</option>
+                    <option value="height-desc">海拔 (高→低)</option>
+                    <option value="height-asc">海拔 (低→高)</option>
+                    <option value="name">名稱</option>
+                </select>
+            </div>
+            
+            <div class="mountain-list" id="mountainList"></div>
+            
+            <div class="stats" id="stats"></div>
+        </aside>
+        
+        <main class="map-container">
+            <button class="mobile-toggle" id="mobileToggle">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+            <div id="map"></div>
+            <div class="map-legend">
+                <div class="legend-title">圖例</div>
+                <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>百岳</div>
+                <div class="legend-item"><span class="legend-dot" style="background:#22c55e"></span>小百岳</div>
+                <div class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span>中級山</div>
+                <div class="legend-item"><span class="legend-dot" style="background:#a855f7"></span>高山</div>
+                <div class="legend-item"><span class="legend-dot" style="background:#6b7280"></span>郊山</div>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <script>
+        // Mountain Data
+        const mountains = [
+            {id: "001", name: "磺嘴山", h: 912, type: "中級山", lat: 25.168, lng: 121.574},
+            {id: "002", name: "大屯山", h: 1092, type: "小百岳", lat: 25.176, lng: 121.521},
+            {id: "003", name: "七星山", h: 1120, type: "小百岳", lat: 25.170, lng: 121.545},
+            {id: "004", name: "觀音山", h: 616, type: "小百岳", lat: 25.137, lng: 121.423},
+            {id: "005", name: "基隆山", h: 587, type: "小百岳", lat: 25.119, lng: 121.846},
+            {id: "006", name: "獅仔頭山", h: 858, type: "小百岳", lat: 24.908, lng: 121.503},
+            {id: "007", name: "北插天山", h: 1727, type: "中級山", lat: 24.792, lng: 121.448},
+            {id: "008", name: "阿玉山", h: 1420, type: "中級山", lat: 24.789, lng: 121.603},
+            {id: "009", name: "鳥嘴山", h: 1749, type: "中級山", lat: 24.577, lng: 121.282},
+            {id: "010", name: "塔曼山", h: 2130, type: "中級山", lat: 24.707, lng: 121.436},
+            {id: "011", name: "李崠山", h: 1914, type: "小百岳", lat: 24.646, lng: 121.300},
+            {id: "012", name: "巴博庫魯山", h: 2101, type: "中級山", lat: 24.673, lng: 121.470},
+            {id: "013", name: "雪白山", h: 2444, type: "中級山", lat: 24.611, lng: 121.373},
+            {id: "014", name: "霞喀羅大山", h: 2234, type: "中級山", lat: 24.567, lng: 121.233},
+            {id: "015", name: "仙山", h: 967, type: "小百岳", lat: 24.545, lng: 120.948},
+            {id: "016", name: "加里山", h: 2220, type: "小百岳", lat: 24.516, lng: 121.033},
+            {id: "017", name: "鹿場大山", h: 2360, type: "中級山", lat: 24.498, lng: 121.050},
+            {id: "018", name: "虎山", h: 1492, type: "中級山", lat: 24.467, lng: 120.983},
+            {id: "019", name: "大霸尖山", h: 3492, type: "百岳", lat: 24.464, lng: 121.258},
+            {id: "020", name: "東洗水山", h: 2248, type: "中級山", lat: 24.408, lng: 120.983},
+            {id: "021", name: "桃山", h: 3325, type: "百岳", lat: 24.417, lng: 121.300},
+            {id: "022", name: "品田山", h: 3529, type: "百岳", lat: 24.428, lng: 121.267},
+            {id: "023", name: "穆特勒布山", h: 3626, type: "高山", lat: 24.417, lng: 121.250},
+            {id: "024", name: "雪山", h: 3886, type: "百岳", lat: 24.383, lng: 121.233},
+            {id: "025", name: "火炎山", h: 602, type: "小百岳", lat: 24.363, lng: 120.730},
+            {id: "026", name: "馬那邦山", h: 1407, type: "小百岳", lat: 24.367, lng: 120.917},
+            {id: "027", name: "南湖東峰", h: 3632, type: "百岳", lat: 24.364, lng: 121.441},
+            {id: "028", name: "南湖大山", h: 3742, type: "百岳", lat: 24.358, lng: 121.433},
+            {id: "029", name: "中央尖山", h: 3705, type: "百岳", lat: 24.317, lng: 121.400},
+            {id: "030", name: "稍來山", h: 2307, type: "小百岳", lat: 24.233, lng: 120.967},
+            {id: "031", name: "白姑大山", h: 3341, type: "百岳", lat: 24.204, lng: 121.107},
+            {id: "032", name: "東卯山", h: 1690, type: "中級山", lat: 24.183, lng: 120.933},
+            {id: "033", name: "合歡北峰", h: 3422, type: "百岳", lat: 24.181, lng: 121.283},
+            {id: "034", name: "八仙山", h: 2366, type: "中級山", lat: 24.167, lng: 121.017},
+            {id: "035", name: "合歡山", h: 3417, type: "百岳", lat: 24.142, lng: 121.272},
+            {id: "036", name: "守城大山", h: 2420, type: "中級山", lat: 24.067, lng: 121.083},
+            {id: "037", name: "能高山", h: 3262, type: "百岳", lat: 24.033, lng: 121.283},
+            {id: "038", name: "馬海濮富士山", h: 2617, type: "中級山", lat: 24.017, lng: 121.183},
+            {id: "039", name: "能高南峰", h: 3349, type: "百岳", lat: 24.000, lng: 121.283},
+            {id: "040", name: "九份二山", h: 1174, type: "小百岳", lat: 23.950, lng: 120.833},
+            {id: "041", name: "干卓萬山", h: 3284, type: "百岳", lat: 23.900, lng: 121.133},
+            {id: "042", name: "安東軍山", h: 3068, type: "百岳", lat: 23.867, lng: 121.267},
+            {id: "043", name: "集集大山", h: 1392, type: "小百岳", lat: 23.850, lng: 120.817},
+            {id: "044", name: "水社大山", h: 2059, type: "中級山", lat: 23.842, lng: 120.950},
+            {id: "045", name: "治茆山", h: 2909, type: "中級山", lat: 23.800, lng: 120.983},
+            {id: "046", name: "鳳凰山", h: 1698, type: "小百岳", lat: 23.700, lng: 120.817},
+            {id: "047", name: "東郡大山", h: 3619, type: "百岳", lat: 23.683, lng: 121.050},
+            {id: "048", name: "石壁山", h: 1752, type: "小百岳", lat: 23.608, lng: 120.717},
+            {id: "049", name: "丹大山", h: 3325, type: "百岳", lat: 23.633, lng: 121.183},
+            {id: "050", name: "雲嘉大尖山", h: 1304, type: "小百岳", lat: 23.583, lng: 120.617},
+            {id: "051", name: "郡大山", h: 3265, type: "百岳", lat: 23.583, lng: 120.950},
+            {id: "052", name: "大塔山", h: 2663, type: "小百岳", lat: 23.533, lng: 120.800},
+            {id: "053", name: "馬利加南山", h: 3546, type: "百岳", lat: 23.517, lng: 121.117},
+            {id: "054", name: "馬博拉斯山", h: 3785, type: "百岳", lat: 23.517, lng: 121.067},
+            {id: "055", name: "秀姑巒山", h: 3805, type: "百岳", lat: 23.500, lng: 121.050},
+            {id: "056", name: "玉山北峰", h: 3858, type: "百岳", lat: 23.485, lng: 120.953},
+            {id: "057", name: "大水窟山", h: 3642, type: "百岳", lat: 23.467, lng: 121.050},
+            {id: "058", name: "玉山", h: 3952, type: "百岳", lat: 23.470, lng: 120.957},
+            {id: "059", name: "玉穗山", h: 1578, type: "中級山", lat: 23.233, lng: 120.817},
+            {id: "060", name: "大凍山", h: 1241, type: "小百岳", lat: 23.317, lng: 120.500},
+            {id: "061", name: "向陽山", h: 3602, type: "百岳", lat: 23.283, lng: 120.983},
+            {id: "062", name: "關山", h: 3666, type: "百岳", lat: 23.267, lng: 120.917},
+            {id: "063", name: "石山", h: 2818, type: "中級山", lat: 23.117, lng: 120.783},
+            {id: "064", name: "卑南主山", h: 3295, type: "百岳", lat: 23.083, lng: 120.867},
+            {id: "065", name: "尾寮山", h: 1427, type: "小百岳", lat: 22.867, lng: 120.633},
+            {id: "066", name: "大母母山", h: 2424, type: "中級山", lat: 22.750, lng: 120.750},
+            {id: "067", name: "知本主山", h: 2230, type: "中級山", lat: 22.717, lng: 120.933},
+            {id: "068", name: "井步山", h: 2066, type: "中級山", lat: 22.733, lng: 120.733},
+            {id: "069", name: "霧頭山", h: 2736, type: "中級山", lat: 22.683, lng: 120.783},
+            {id: "070", name: "壽山", h: 356, type: "小百岳", lat: 22.650, lng: 120.267},
+            {id: "071", name: "北大武山", h: 3092, type: "百岳", lat: 22.628, lng: 120.760},
+            {id: "072", name: "南大武山", h: 2841, type: "中級山", lat: 22.567, lng: 120.750},
+            {id: "073", name: "里龍山", h: 1062, type: "小百岳", lat: 22.183, lng: 120.717},
+            {id: "074", name: "烘爐地山", h: 1166, type: "中級山", lat: 24.850, lng: 121.733},
+            {id: "075", name: "三星山", h: 2352, type: "小百岳", lat: 24.517, lng: 121.567},
+            {id: "076", name: "飯包山", h: 1857, type: "中級山", lat: 24.500, lng: 121.683},
+            {id: "077", name: "清水大山", h: 2408, type: "中級山", lat: 24.233, lng: 121.617},
+            {id: "078", name: "三角錐山", h: 2607, type: "中級山", lat: 24.200, lng: 121.567},
+            {id: "079", name: "塔山", h: 2449, type: "中級山", lat: 24.150, lng: 121.533},
+            {id: "080", name: "佐久間山", h: 2809, type: "中級山", lat: 24.117, lng: 121.517},
+            {id: "081", name: "奇萊北峰", h: 3607, type: "百岳", lat: 24.114, lng: 121.333},
+            {id: "082", name: "太魯閣大山", h: 3283, type: "百岳", lat: 24.083, lng: 121.433},
+            {id: "083", name: "鯉魚山", h: 601, type: "小百岳", lat: 23.933, lng: 121.517},
+            {id: "084", name: "木瓜山", h: 2427, type: "中級山", lat: 23.900, lng: 121.467},
+            {id: "085", name: "針山", h: 2340, type: "中級山", lat: 23.867, lng: 121.367},
+            {id: "086", name: "南二子山", h: 2454, type: "中級山", lat: 23.833, lng: 121.417},
+            {id: "087", name: "王武塔山", h: 2022, type: "中級山", lat: 23.750, lng: 121.383},
+            {id: "088", name: "阿屘那來山", h: 3061, type: "高山", lat: 23.717, lng: 121.300},
+            {id: "089", name: "八里灣山", h: 924, type: "小百岳", lat: 23.533, lng: 121.517},
+            {id: "090", name: "馬西山", h: 3443, type: "百岳", lat: 23.417, lng: 121.183},
+            {id: "091", name: "玉里山", h: 2157, type: "中級山", lat: 23.367, lng: 121.283},
+            {id: "092", name: "新康山", h: 3331, type: "百岳", lat: 23.333, lng: 121.133},
+            {id: "093", name: "成廣澳山", h: 1598, type: "中級山", lat: 23.167, lng: 121.350},
+            {id: "094", name: "新港山", h: 1682, type: "中級山", lat: 23.133, lng: 121.317},
+            {id: "095", name: "美奈田主山", h: 2931, type: "中級山", lat: 22.950, lng: 120.933},
+            {id: "096", name: "都蘭山", h: 1190, type: "小百岳", lat: 22.883, lng: 121.183},
+            {id: "097", name: "火燒山", h: 280, type: "郊山", lat: 22.667, lng: 121.483},
+            {id: "098", name: "太麻里山", h: 1340, type: "小百岳", lat: 22.633, lng: 120.967},
+            {id: "099", name: "紅頭山", h: 552, type: "小百岳", lat: 22.050, lng: 121.550},
+            {id: "100", name: "太武山", h: 253, type: "小百岳", lat: 24.461, lng: 118.426}
+        ];
+
+        // Type colors
+        const typeColors = {
+            '百岳': '#ef4444',
+            '小百岳': '#22c55e',
+            '中級山': '#3b82f6',
+            '高山': '#a855f7',
+            '郊山': '#6b7280'
+        };
+
+        // State
+        let activeFilters = new Set(['百岳', '小百岳', '中級山', '高山', '郊山']);
+        let searchQuery = '';
+        let sortBy = 'id';
+        let selectedMountainId = null;
+        let markers = {};
+
+        // Initialize map
+        const map = L.map('map').setView([23.7, 120.95], 8);
+        
+        L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            maxZoom: 17,
+            attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a>'
+        }).addTo(map);
+
+        // Get filtered mountains
+        function getFilteredMountains() {
+            let filtered = mountains.filter(m => {
+                const matchesFilter = activeFilters.has(m.type);
+                const matchesSearch = searchQuery === '' || 
+                    m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    m.id.includes(searchQuery);
+                return matchesFilter && matchesSearch;
+            });
+
+            // Sort
+            filtered.sort((a, b) => {
+                switch (sortBy) {
+                    case 'height-desc': return b.h - a.h;
+                    case 'height-asc': return a.h - b.h;
+                    case 'name': return a.name.localeCompare(b.name, 'zh-TW');
+                    default: return a.id.localeCompare(b.id);
+                }
+            });
+
+            return filtered;
+        }
+
+        // Render filter buttons
+        function renderFilters() {
+            const container = document.getElementById('filterButtons');
+            const types = ['百岳', '小百岳', '中級山', '高山', '郊山'];
+            
+            container.innerHTML = types.map(type => {
+                const count = mountains.filter(m => m.type === type).length;
+                const isActive = activeFilters.has(type);
+                return `
+                    <button class="filter-btn ${isActive ? 'active' : ''}" data-type="${type}">
+                        <span class="filter-dot" style="background:${typeColors[type]}"></span>
+                        ${type}
+                        <span class="filter-count">(${count})</span>
+                    </button>
+                `;
+            }).join('');
+
+            container.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const type = btn.dataset.type;
+                    if (activeFilters.has(type)) {
+                        activeFilters.delete(type);
+                    } else {
+                        activeFilters.add(type);
+                    }
+                    renderFilters();
+                    renderList();
+                    updateMarkers();
+                });
+            });
+        }
+
+        // Render mountain list
+        function renderList() {
+            const container = document.getElementById('mountainList');
+            const filtered = getFilteredMountains();
+
+            container.innerHTML = filtered.map(m => `
+                <div class="mountain-item ${selectedMountainId === m.id ? 'selected' : ''}" data-id="${m.id}">
+                    <span class="mountain-marker" style="background:${typeColors[m.type]}"></span>
+                    <div class="mountain-info">
+                        <div class="mountain-name">${m.id} ${m.name}</div>
+                        <div class="mountain-meta">
+                            <span>${m.type}</span>
+                        </div>
+                    </div>
+                    <span class="mountain-elevation">${m.h}m</span>
+                </div>
+            `).join('');
+
+            container.querySelectorAll('.mountain-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const id = item.dataset.id;
+                    const mountain = mountains.find(m => m.id === id);
+                    if (mountain) {
+                        selectMountain(mountain);
+                    }
+                });
+            });
+
+            // Update stats
+            const highest = filtered.reduce((max, m) => m.h > max.h ? m : max, filtered[0] || {h: 0, name: '-'});
+            document.getElementById('stats').innerHTML = `
+                <div class="stats-row">
+                    <span class="stats-label">顯示</span>
+                    <span class="stats-value">${filtered.length} / ${mountains.length} 座</span>
+                </div>
+                <div class="stats-row" style="margin-top:4px">
+                    <span class="stats-label">最高峰</span>
+                    <span class="stats-value">${highest.name || '-'} (${highest.h}m)</span>
+                </div>
+            `;
+        }
+
+        // Create markers
+        function createMarkers() {
+            mountains.forEach(m => {
+                const marker = L.circleMarker([m.lat, m.lng], {
+                    radius: 8,
+                    fillColor: typeColors[m.type],
+                    color: '#fff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.9
+                });
+
+                marker.bindPopup(`
+                    <div class="popup-title">${m.id} ${m.name}</div>
+                    <div class="popup-info">
+                        海拔：<span class="popup-elevation">${m.h}m</span><br>
+                        類型：${m.type}
+                    </div>
+                `);
+
+                marker.bindTooltip(`${m.id} ${m.name}`, {
+                    permanent: false,
+                    direction: 'top',
+                    offset: [0, -8]
+                });
+
+                marker.on('click', () => selectMountain(m));
+                markers[m.id] = marker;
+                marker.addTo(map);
+            });
+        }
+
+        // Update marker visibility
+        function updateMarkers() {
+            const filtered = getFilteredMountains();
+            const filteredIds = new Set(filtered.map(m => m.id));
+
+            Object.entries(markers).forEach(([id, marker]) => {
+                if (filteredIds.has(id)) {
+                    marker.addTo(map);
+                } else {
+                    marker.remove();
+                }
+            });
+        }
+
+        // Select mountain
+        function selectMountain(mountain) {
+            selectedMountainId = mountain.id;
+            map.flyTo([mountain.lat, mountain.lng], 12, { duration: 1 });
+            markers[mountain.id].openPopup();
+            renderList();
+            
+            // Close sidebar on mobile
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.remove('open');
+            }
+        }
+
+        // Event listeners
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            searchQuery = e.target.value;
+            renderList();
+            updateMarkers();
+        });
+
+        document.getElementById('sortSelect').addEventListener('change', (e) => {
+            sortBy = e.target.value;
+            renderList();
+        });
+
+        document.getElementById('mobileToggle').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.toggle('open');
+        });
+
+        // Initialize
+        renderFilters();
+        renderList();
+        createMarkers();
+    </script>
+</body>
+</html>
